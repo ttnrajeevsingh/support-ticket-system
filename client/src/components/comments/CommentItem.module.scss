@@ -1,0 +1,30 @@
+.item {
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.author {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.date {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.message {
+  font-size: 0.8125rem;
+  color: #4b5563;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

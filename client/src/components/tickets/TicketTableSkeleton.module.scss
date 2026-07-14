@@ -1,0 +1,22 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.headerRow {
+  display: grid;
+  grid-template-columns: 3fr 1fr 1fr 1.2fr 1fr;
+  gap: 0.75rem;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 3fr 1fr 1fr 1.2fr 1fr;
+  gap: 0.75rem;
+  padding: 0.875rem 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+  align-items: center;
+}

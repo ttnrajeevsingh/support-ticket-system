@@ -1,0 +1,34 @@
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.open {
+  background-color: var(--color-open-bg);
+  color: var(--color-open-text);
+}
+
+.in_progress {
+  background-color: var(--color-progress-bg);
+  color: var(--color-progress-text);
+}
+
+.resolved {
+  background-color: var(--color-resolved-bg);
+  color: var(--color-resolved-text);
+}
+
+.closed {
+  background-color: var(--color-closed-bg);
+  color: var(--color-closed-text);
+}
+
+.cancelled {
+  background-color: var(--color-cancelled-bg);
+  color: var(--color-cancelled-text);
+}

@@ -1,0 +1,13 @@
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.low      { background: #f3f4f6; color: var(--color-priority-low); }
+.medium   { background: #fef3c7; color: var(--color-priority-medium); }
+.high     { background: #fee2e2; color: var(--color-priority-high); }
+.critical { background: #ede9fe; color: var(--color-priority-critical); }
