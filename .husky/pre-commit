@@ -1,0 +1,61 @@
+#!/bin/sh
+
+echo "🔍 Running pre-commit checks..."
+
+# ─── Backend: Type check + Tests ──────────────────────────────────────────────
+echo ""
+echo "📦 [Server] Type checking..."
+cd server
+npm run typecheck
+if [ $? -ne 0 ]; then
+  echo "❌ Server type check failed. Fix type errors before committing."
+  exit 1
+fi
+
+echo "✅ [Server] Type check passed"
+
+echo "🧪 [Server] Running tests..."
+npm run test:unit
+if [ $? -ne 0 ]; then
+  echo "❌ Server tests failed. Fix failing tests before committing."
+  exit 1
+fi
+
+echo "✅ [Server] Tests passed"
+
+cd ..
+
+# ─── Frontend: Type check + Tests + Build ─────────────────────────────────────
+echo ""
+echo "📦 [Client] Type checking..."
+cd client
+npm run typecheck
+if [ $? -ne 0 ]; then
+  echo "❌ Client type check failed. Fix type errors before committing."
+  exit 1
+fi
+
+echo "✅ [Client] Type check passed"
+
+echo "🧪 [Client] Running tests..."
+npm test
+if [ $? -ne 0 ]; then
+  echo "❌ Client tests failed. Fix failing tests before committing."
+  exit 1
+fi
+
+echo "✅ [Client] Tests passed"
+
+echo "🏗️  [Client] Building..."
+npm run build
+if [ $? -ne 0 ]; then
+  echo "❌ Client build failed. Fix build errors before committing."
+  exit 1
+fi
+
+echo "✅ [Client] Build passed"
+
+cd ..
+
+echo ""
+echo "🎉 All pre-commit checks passed!"
