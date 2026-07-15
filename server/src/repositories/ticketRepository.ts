@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma';
 import { Prisma } from '@prisma/client';
-import { Ticket, CreateTicketInput, UpdateTicketInput, TicketFilters } from '../types/ticket';
+import { Ticket, CreateTicketInput, UpdateTicketInput, TicketFilters, PaginatedResponse } from '../types/ticket';
 import { NotFoundError } from '../errors/NotFoundError';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -45,29 +45,46 @@ function mapTicket(t: any): Ticket {
 
 // ─── Repository functions ─────────────────────────────────────────────────────
 
-export async function findAll(filters: TicketFilters = {}): Promise<Ticket[]> {
+export async function findAll(filters: TicketFilters = {}): Promise<PaginatedResponse<Ticket>> {
   const { search, status, priority, assignedTo } = filters;
+  const page = Math.max(1, filters.page || 1);
+  const limit = Math.min(100, Math.max(1, filters.limit || 10));
+  const skip = (page - 1) * limit;
 
   // ── Full-text search path (uses raw SQL for GIN index) ────────────────────
   if (search) {
-    // Build a tsquery that supports prefix matching:
-    // "dar" → 'dar:*'  |  "dark mode" → 'dark & mode:*'
-    // This allows partial word matching as the user types.
     const sanitized = search.replace(/[^\w\s]/g, '').trim();
-    const words = sanitized.split(/\s+/).filter(Boolean);
-    const tsquery = words
-      .map((word, i) => (i === words.length - 1 ? `${word}:*` : word))
-      .join(' & ');
 
-    const conditions: Prisma.Sql[] = [
-      Prisma.sql`to_tsvector('english', t.title || ' ' || t.description) @@ to_tsquery('english', ${tsquery})`,
-    ];
+    let searchCondition: Prisma.Sql;
+
+    if (sanitized.length <= 2) {
+      // Short terms: FTS drops single/double chars as stop words.
+      // Fall back to case-insensitive LIKE for short input.
+      const likePattern = `%${sanitized}%`;
+      searchCondition = Prisma.sql`(t.title ILIKE ${likePattern} OR t.description ILIKE ${likePattern})`;
+    } else {
+      // 3+ chars: use full-text search with prefix matching
+      const words = sanitized.split(/\s+/).filter(Boolean);
+      const tsquery = words
+        .map((word, i) => (i === words.length - 1 ? `${word}:*` : word))
+        .join(' & ');
+      searchCondition = Prisma.sql`to_tsvector('english', t.title || ' ' || t.description) @@ to_tsquery('english', ${tsquery})`;
+    }
+
+    const conditions: Prisma.Sql[] = [searchCondition];
     if (status)     conditions.push(Prisma.sql`t.status = ${status}::"Status"`);
     if (priority)   conditions.push(Prisma.sql`t.priority = ${priority}::"Priority"`);
     if (assignedTo) conditions.push(Prisma.sql`t.assigned_to = ${assignedTo}::uuid`);
 
     const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`;
 
+    // Count total matching rows
+    const countResult: any[] = await prisma.$queryRaw`
+      SELECT COUNT(*)::int AS total FROM tickets t ${whereClause}
+    `;
+    const total = countResult[0]?.total ?? 0;
+
+    // Fetch paginated rows
     const rows: any[] = await prisma.$queryRaw`
       SELECT
         t.id, t.title, t.description, t.priority, t.status,
@@ -83,9 +100,10 @@ export async function findAll(filters: TicketFilters = {}): Promise<Ticket[]> {
       LEFT JOIN users au ON au.id = t.assigned_to
       ${whereClause}
       ORDER BY t.created_at DESC
+      LIMIT ${limit} OFFSET ${skip}
     `;
 
-    return rows.map((r) => ({
+    const data = rows.map((r) => ({
       id: r.id,
       title: r.title,
       description: r.description,
@@ -102,23 +120,35 @@ export async function findAll(filters: TicketFilters = {}): Promise<Ticket[]> {
         ? { ...r.assignee, createdAt: new Date(r.assignee.createdAt).toISOString() }
         : null,
     }));
+
+    return { data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
   }
 
   // ── Standard filter path (Prisma typed query) ─────────────────────────────
-  const tickets = await prisma.ticket.findMany({
-    where: {
-      ...(status     && { status }),
-      ...(priority   && { priority }),
-      ...(assignedTo && { assignedTo }),
-    },
-    include: {
-      creator: { select: userSelect },
-      assignee: { select: userSelect },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  const where = {
+    ...(status     && { status }),
+    ...(priority   && { priority }),
+    ...(assignedTo && { assignedTo }),
+  };
 
-  return tickets.map(mapTicket);
+  const [tickets, total] = await Promise.all([
+    prisma.ticket.findMany({
+      where,
+      include: {
+        creator: { select: userSelect },
+        assignee: { select: userSelect },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.ticket.count({ where }),
+  ]);
+
+  return {
+    data: tickets.map(mapTicket),
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  };
 }
 
 export async function findById(id: string): Promise<Ticket> {

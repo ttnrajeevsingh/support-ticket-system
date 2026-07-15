@@ -75,4 +75,16 @@ export interface TicketFilters {
   status?: Status;
   priority?: Priority;
   assignedTo?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }

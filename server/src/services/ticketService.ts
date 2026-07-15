@@ -2,9 +2,9 @@ import * as ticketRepository from '../repositories/ticketRepository';
 import * as userRepository from '../repositories/userRepository';
 import { assertTransition } from './stateMachine';
 import { NotFoundError } from '../errors/NotFoundError';
-import { Ticket, CreateTicketInput, UpdateTicketInput, Status, TicketFilters } from '../types/ticket';
+import { Ticket, CreateTicketInput, UpdateTicketInput, Status, TicketFilters, PaginatedResponse } from '../types/ticket';
 
-export async function listTickets(filters: TicketFilters): Promise<Ticket[]> {
+export async function listTickets(filters: TicketFilters): Promise<PaginatedResponse<Ticket>> {
   return ticketRepository.findAll(filters);
 }
 

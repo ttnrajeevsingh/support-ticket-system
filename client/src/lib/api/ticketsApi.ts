@@ -1,16 +1,24 @@
 import { fetchApi } from './fetchClient';
-import { Ticket, CreateTicketInput, UpdateTicketInput, Status } from '@/types/ticket';
+import { Ticket, CreateTicketInput, UpdateTicketInput, Status, PaginatedResponse } from '@/types/ticket';
 
 export async function getTickets(params?: {
   search?: string;
   status?: Status;
+  priority?: string;
+  assignedTo?: string;
+  page?: number;
+  limit?: number;
   signal?: AbortSignal;
-}): Promise<Ticket[]> {
+}): Promise<PaginatedResponse<Ticket>> {
   const query = new URLSearchParams();
-  if (params?.search) query.set('search', params.search);
-  if (params?.status) query.set('status', params.status);
+  if (params?.search)     query.set('search', params.search);
+  if (params?.status)     query.set('status', params.status);
+  if (params?.priority)   query.set('priority', params.priority);
+  if (params?.assignedTo) query.set('assignedTo', params.assignedTo);
+  if (params?.page)       query.set('page', String(params.page));
+  if (params?.limit)      query.set('limit', String(params.limit));
   const qs = query.toString();
-  return fetchApi<Ticket[]>(`/tickets${qs ? `?${qs}` : ''}`, {
+  return fetchApi<PaginatedResponse<Ticket>>(`/tickets${qs ? `?${qs}` : ''}`, {
     signal: params?.signal,
   });
 }
