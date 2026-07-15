@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Ensure Node 22 is used (nvm doesn't load in non-interactive git hooks)
+export PATH="$HOME/.nvm/versions/node/v22.22.3/bin:$PATH"
+
 echo "🔍 Running pre-commit checks..."
 
 # ─── Backend: Type check + Tests ──────────────────────────────────────────────
