@@ -1,17 +1,18 @@
 'use client';
 
 import { create } from 'zustand';
-import { Ticket, Status, CreateTicketInput, UpdateTicketInput } from '@/types/ticket';
+import { Ticket, Status, CreateTicketInput, UpdateTicketInput, Pagination } from '@/types/ticket';
 import * as ticketsApi from '@/lib/api/ticketsApi';
 import { ApiException } from '@/lib/api/fetchClient';
 
 interface TicketStore {
   tickets: Ticket[];
+  pagination: Pagination | null;
   activeTicket: Ticket | null;
   loading: boolean;
   error: string | null;
 
-  fetchTickets: (params?: { search?: string; status?: Status }) => Promise<void>;
+  fetchTickets: (params?: { search?: string; status?: Status; priority?: string; assignedTo?: string; page?: number; limit?: number }) => Promise<void>;
   fetchTicket: (id: string) => Promise<void>;
   createTicket: (data: CreateTicketInput) => Promise<Ticket>;
   updateTicket: (id: string, data: UpdateTicketInput) => Promise<Ticket>;
@@ -19,18 +20,16 @@ interface TicketStore {
   clearError: () => void;
 }
 
-// Holds the AbortController for the current in-flight fetchTickets request.
-// When a new search fires, the previous one is cancelled.
 let searchAbortController: AbortController | null = null;
 
 export const useTicketStore = create<TicketStore>((set) => ({
   tickets: [],
+  pagination: null,
   activeTicket: null,
   loading: false,
   error: null,
 
   fetchTickets: async (params) => {
-    // Cancel any in-flight search request
     if (searchAbortController) {
       searchAbortController.abort();
     }
@@ -39,19 +38,15 @@ export const useTicketStore = create<TicketStore>((set) => ({
 
     set({ loading: true, error: null });
     try {
-      const tickets = await ticketsApi.getTickets({
+      const result = await ticketsApi.getTickets({
         ...params,
         signal: controller.signal,
       });
-      // Only update state if this request wasn't aborted
       if (!controller.signal.aborted) {
-        set({ tickets, loading: false });
+        set({ tickets: result.data, pagination: result.pagination, loading: false });
       }
     } catch (err) {
-      // Ignore abort errors — they're intentional
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        return;
-      }
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       const msg = err instanceof ApiException ? err.message : 'Failed to load tickets';
       if (!controller.signal.aborted) {
         set({ error: msg, loading: false });

@@ -22,24 +22,51 @@ export function errorHandler(
   // ── Prisma known request errors ──────────────────────────────────────────────
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     switch (err.code) {
-      case 'P2025': // Record not found
-        res.status(404).json({ error: 'Resource not found', code: 'NOT_FOUND' });
+      case 'P2025':
+        res.status(404).json({
+          error: 'The requested resource was not found',
+          code: 'NOT_FOUND',
+        });
         return;
-      case 'P2002': // Unique constraint violation
-        res.status(409).json({ error: 'Resource already exists', code: 'CONFLICT' });
+      case 'P2002': {
+        const target = (err.meta?.target as string[])?.join(', ') || 'field';
+        res.status(409).json({
+          error: `A record with this ${target} already exists`,
+          code: 'CONFLICT',
+        });
         return;
-      case 'P2003': // Foreign key constraint
-        res.status(400).json({ error: 'Referenced resource does not exist', code: 'INVALID_REFERENCE' });
+      }
+      case 'P2003': {
+        const field = (err.meta?.field_name as string) || 'reference';
+        res.status(400).json({
+          error: `The referenced ${field} does not exist`,
+          code: 'INVALID_REFERENCE',
+        });
         return;
-      default:
-        res.status(400).json({ error: 'Database error', code: 'DATABASE_ERROR' });
+      }
+      default: {
+        const detail = process.env.NODE_ENV === 'development'
+          ? ` (Prisma ${err.code}: ${err.message.split('\n').pop()?.trim()})`
+          : '';
+        console.error('[Prisma Error]', err.code, err.message);
+        res.status(400).json({
+          error: `Unable to process the request${detail}`,
+          code: 'BAD_REQUEST',
+        });
         return;
+      }
     }
   }
 
   // ── Prisma validation errors ─────────────────────────────────────────────────
   if (err instanceof Prisma.PrismaClientValidationError) {
-    res.status(400).json({ error: 'Invalid data provided', code: 'VALIDATION_ERROR' });
+    const detail = process.env.NODE_ENV === 'development'
+      ? `: ${err.message.split('\n').pop()?.trim()}`
+      : '';
+    res.status(400).json({
+      error: `Invalid data provided${detail}`,
+      code: 'VALIDATION_ERROR',
+    });
     return;
   }
 
@@ -47,11 +74,9 @@ export function errorHandler(
   const message =
     process.env.NODE_ENV === 'development' && err instanceof Error
       ? err.message
-      : 'An unexpected error occurred';
+      : 'An unexpected error occurred. Please try again later.';
 
-  if (process.env.NODE_ENV === 'development') {
-    console.error('[ErrorHandler]', err);
-  }
+  console.error('[Unhandled Error]', err);
 
   res.status(500).json({ error: message, code: 'INTERNAL_ERROR' });
 }

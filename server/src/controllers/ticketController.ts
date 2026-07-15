@@ -9,9 +9,11 @@ export async function listTickets(req: Request, res: Response, next: NextFunctio
       status:     req.query.status     as Status | undefined,
       priority:   req.query.priority   as any,
       assignedTo: req.query.assignedTo as string | undefined,
+      page:       req.query.page  ? parseInt(req.query.page as string)  : undefined,
+      limit:      req.query.limit ? parseInt(req.query.limit as string) : undefined,
     };
-    const tickets = await ticketService.listTickets(filters);
-    res.json(tickets);
+    const result = await ticketService.listTickets(filters);
+    res.json(result);
   } catch (err) { next(err); }
 }
 

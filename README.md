@@ -92,11 +92,16 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### 6. Run tests
 
 ```bash
+# Server tests (65 tests: 48 unit + 17 integration)
 cd server
-npm test          # all tests (unit + integration)
-npm run test:unit        # state machine unit tests only
-npm run test:integration # API integration tests only
+npm test
+
+# Client tests (51 tests: 8 suites)
+cd ../client
+npm test
 ```
+
+Total: **116 tests** across both projects.
 
 ## Project Structure
 
@@ -150,7 +155,7 @@ Invalid transitions are rejected by the backend (HTTP 422) and never offered in 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v1/users` | List all users |
-| GET | `/api/v1/tickets` | List tickets (supports `?search=`, `?status=`) |
+| GET | `/api/v1/tickets` | List tickets with pagination, search, and filters |
 | POST | `/api/v1/tickets` | Create a ticket |
 | GET | `/api/v1/tickets/:id` | Get ticket with comments |
 | PATCH | `/api/v1/tickets/:id` | Update ticket fields |
@@ -158,12 +163,34 @@ Invalid transitions are rejected by the backend (HTTP 422) and never offered in 
 | POST | `/api/v1/tickets/:id/comments` | Add a comment |
 | GET | `/api/v1/tickets/:id/comments` | List comments |
 
+### Query parameters for GET /tickets
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `search` | string | Full-text search (prefix matching, 1-2 chars fallback to ILIKE) |
+| `status` | enum | Filter: open, in_progress, resolved, closed, cancelled |
+| `priority` | enum | Filter: low, medium, high, critical |
+| `assignedTo` | uuid | Filter by assignee user ID |
+| `page` | int | Page number (default: 1) |
+| `limit` | int | Items per page (default: 10, max: 100) |
+
+### Rate Limiting
+
+- All API routes: 100 requests/minute per IP
+- Write operations (POST/PATCH): 30 requests/minute per IP
+- Exceeding returns `429` with `{ error, code: "RATE_LIMITED" }`
+
 ## Key Design Decisions
 
 - **State machine isolation**: Pure TypeScript module with zero dependencies — trivially unit-testable.
 - **Hybrid enforcement**: Service layer is the primary guard; Prisma enums prevent invalid status values at DB level.
 - **Zustand over Redux**: Lightweight, minimal boilerplate, fits the mutation + re-fetch pattern.
 - **SCSS Modules**: Scoped styles, no global class pollution, co-located with components.
+- **Pagination**: Server-side with `LIMIT/OFFSET` + parallel `COUNT(*)` for total.
+- **Search**: Dual strategy — ILIKE for 1-2 chars, PostgreSQL FTS with GIN index for 3+ chars.
+- **Rate limiting**: Two tiers (100/min reads, 30/min writes) using `express-rate-limit`.
+- **AbortController**: Client cancels in-flight search requests when new input arrives.
+- **Pre-commit hooks**: Husky runs typecheck + tests + build before every commit.
 - **No authentication in Core**: User is selected via dropdown (per assignment spec).
 
 ## Node.js Version Note
